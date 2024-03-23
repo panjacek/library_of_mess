@@ -1,0 +1,10 @@
+services:
+  library_of_mess:
+    image: library_of_mess
+    build: .
+    volumes:
+      - ${PWD}:/app
+      - ${LIBRARY_PATH}:/app/library:ro
+    ports:
+      - ${PORT}:8501
+    command: "streamlit run app.py"
