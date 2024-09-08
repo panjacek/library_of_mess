@@ -1,12 +1,15 @@
 import logging
 
 import streamlit as st
+from streamlit.logger import get_logger
 
 from helpers.common import filter_db, load_db, show_video_file
 
 st.set_page_config(page_title="Library of Mess", page_icon="📚", layout="wide")
 
-logger = logging.getLogger(__name__)
+# add sublogger for page info
+logger = get_logger(__name__)
+logger.setLevel(logging.DEBUG)
 
 st.title("Library of Mess")
 

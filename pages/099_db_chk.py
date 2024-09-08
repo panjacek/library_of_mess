@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from streamlit.logger import get_logger
 
 from helpers.common import (
     DB_COLUMNS,
@@ -14,7 +15,8 @@ from helpers.common import (
     load_db,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
 
 st.set_page_config(page_title="Library of Mess", page_icon="📚", layout="wide")
 

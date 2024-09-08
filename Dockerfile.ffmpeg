@@ -1,0 +1,11 @@
+ARG FFMPEG_BASE_IMAGE=python:3.12-slim
+FROM ${FFMPEG_BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean all
+        

@@ -1,13 +1,15 @@
 import datetime
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 import mutagen
 import pandas as pd
 import streamlit as st
+from streamlit.logger import get_logger
 
-logger = logging.getLogger(__name__)
+from helpers.ffmpeg import generate_thumbnail_from_video
+
+logger = get_logger(__name__)
 
 
 LIBRARY_PATH = "/app/library"
@@ -148,3 +150,24 @@ def show_video_file(
         video_path = filtered_db[filtered_db["name"] == video_path]["path"].values[0]
     with open(video_path, "rb") as video_file:
         st.video(video_file)
+
+
+def generate_thumbnails(filtered_db: pd.DataFrame) -> list[Path]:
+    """Show thumbnail of video using streamlit.image.
+
+    Args:
+        filtered_db (pd.DataFrame): Filtered dataframe
+
+    Returns:
+        list[Path]: List of thumbnail paths
+    """
+    output_dir = Path("/app/.cache/thumbnails/")
+    generated_thumbnails = []
+
+    for video_path in filtered_db["path"]:
+        video_path = Path(video_path)
+        generated_thumbnails.append(
+            generate_thumbnail_from_video(video_path, output_dir)
+        )
+
+    return pd.DataFrame(generated_thumbnails)

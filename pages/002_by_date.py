@@ -40,5 +40,3 @@ for selected_value in selected_values:
 
         if show_video_refs[selected_value]:
             show_video_file(show_video_refs[selected_value])
-
-

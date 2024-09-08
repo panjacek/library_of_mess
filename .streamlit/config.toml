@@ -5,3 +5,7 @@ gatherUsageStats = false
 # base="dark"
 # font="monospace"
 
+[logger]
+level = "info"
+
+messageFormat = "[%(asctime)s][%(name)s]: %(message)s"
