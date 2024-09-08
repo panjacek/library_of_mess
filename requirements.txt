@@ -1,2 +1,2 @@
-streamlit==1.32.2
+streamlit==1.38.0
 mutagen==1.47.0
