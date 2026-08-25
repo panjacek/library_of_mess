@@ -3,7 +3,7 @@ from streamlit.logger import get_logger
 
 from library_of_mess.database import resolve_media_path
 from library_of_mess.thumbnails import clear_failure_markers, generate_thumbnails
-from library_of_mess.paginator import paginator
+from library_of_mess.ui.paginator import paginator
 from library_of_mess.ui.helpers import ensure_db_loaded, render_filters
 
 st.set_page_config(page_title="Library of Mess - Gallery", page_icon="📚", layout="wide")

@@ -20,6 +20,24 @@ test:  ## unit + UI smoke tests, with coverage report
 run:  ## launch streamlit UI (http://localhost:8501)
 	uv run streamlit run src/library_of_mess/ui/app.py
 
+# throwaway playground, never touches your real library.parquet.
+# Override location: make demo DEMO_DIR=/tmp/my-playground
+DEMO_DIR ?= .cache/demo
+DEMO_ENV := LIBRARY_DIR=$(DEMO_DIR)/library LIBRARY_DB=$(DEMO_DIR)/library.parquet THUMBNAILS_DIR=$(DEMO_DIR)/thumbnails EMBEDDINGS_PATH=$(DEMO_DIR)/embeddings.npz
+
+# real file target: clips are generated once; `make clean` resets them
+$(DEMO_DIR)/library.parquet:
+	$(DEMO_ENV) uv run python scripts/make_demo_data.py
+
+demo: $(DEMO_DIR)/library.parquet  ## run UI on throwaway demo db (generated on first use)
+	$(DEMO_ENV) uv run streamlit run src/library_of_mess/ui/app.py
+
+demo-reset:  ## delete demo playground so next `make demo` regenerates it
+	rm -rf $(DEMO_DIR)
+
+demo-data:  ## generate demo library into the isolated playground, no UI (needs ffmpeg)
+	$(DEMO_ENV) uv run python scripts/make_demo_data.py
+
 docker-build:  ## build the container image
 	docker compose build
 
@@ -35,4 +53,4 @@ shell:  ## shell inside container
 clean:  ## clean caches
 	rm -rf ./.cache .pytest_cache .mypy_cache .ruff_cache
 
-.PHONY: help sync format lint test run docker-build up stop shell clean
+.PHONY: help sync format lint test run demo demo-reset demo-data docker-build up stop shell clean

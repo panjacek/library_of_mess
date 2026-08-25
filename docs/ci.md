@@ -4,10 +4,10 @@ GitHub Actions workflow: [.github/workflows/ci.yml](../.github/workflows/ci.yml)
 
 ## Job graph
 
-```
-lint ──────┐
-           ├─► docker-build
-test ──────┘
+```mermaid
+flowchart LR
+    lint["lint<br/>(ruff + mypy + bandit)"] --> docker["docker-build"]
+    test["test<br/>(pytest + AppTest, ffmpeg)"] --> docker
 ```
 
 - **lint** — ruff (lint+format) + mypy (strict-ish) + bandit over `src` and
