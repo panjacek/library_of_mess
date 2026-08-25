@@ -14,8 +14,8 @@ lint:  ## linters: ruff + mypy + bandit
 	uv run mypy src tests
 	uv run bandit -c pyproject.toml -r src -q
 
-test:  ## unit + UI smoke tests
-	uv run pytest
+test:  ## unit + UI smoke tests, with coverage report
+	uv run pytest --cov --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml
 
 run:  ## launch streamlit UI (http://localhost:8501)
 	uv run streamlit run src/library_of_mess/ui/app.py

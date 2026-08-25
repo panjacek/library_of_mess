@@ -23,3 +23,7 @@ docs/plans/
 
 # streamlit
 .streamlit/secrets.toml
+
+# coverage artifacts
+coverage.xml
+.coverage*

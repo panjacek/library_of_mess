@@ -37,6 +37,13 @@ jobs:
         run: uv sync --group dev
       - name: Pytest
         run: make test
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: warn
 
   docker-build:
     name: docker / build image

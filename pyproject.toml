@@ -21,6 +21,7 @@ dev = [
     "mypy>=1.11",
     "bandit>=1.7",
     "pandas-stubs>=2.2",
+    "pytest-cov>=7.1.0",
 ]
 
 [build-system]
@@ -36,6 +37,17 @@ link-mode = "copy"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["library_of_mess"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_also = [
+    "if TYPE_CHECKING:",
+]
 
 [tool.ruff]
 line-length = 120
