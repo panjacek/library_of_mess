@@ -1,26 +1,38 @@
-SHOW_LOGS ?= 0
+help:  ## show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}'
 
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+sync:  ## install/sync all deps (incl. dev group) into .venv
+	uv sync --group dev
 
-build:  ## build image
+format:  ## auto-format code
+	uv run ruff format .
+	uv run ruff check --fix .
+
+lint:  ## linters: ruff + mypy + bandit
+	uv run ruff check .
+	uv run ruff format --check .
+	uv run mypy src tests
+	uv run bandit -c pyproject.toml -r src -q
+
+test:  ## unit + UI smoke tests, with coverage report
+	uv run pytest --cov --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml
+
+run:  ## launch streamlit UI (http://localhost:8501)
+	uv run streamlit run src/library_of_mess/ui/app.py
+
+docker-build:  ## build the container image
 	docker compose build
 
-shell:  ## open shell
-	docker compose run --rm -it library_of_mess /bin/bash
-
-up:  ## start containers
+up:  ## start container in background
 	docker compose up -d
-ifeq ("$(SHOW_LOGS)", "1")
-	docker compose logs -f
-endif
 
 stop:  ## stop containers
-	docker compose down
+	docker compose down -t2
 
-format:  ## format code
-	isort .
-	black .
+shell:  ## shell inside container
+	docker compose run --rm -it library_of_mess /bin/bash
 
-check_pip:
-	docker compose run --rm -it library_of_mess /bin/bash -c "pip list -u && pip list --outdated" 
+clean:  ## clean caches
+	rm -rf ./.cache .pytest_cache .mypy_cache .ruff_cache
+
+.PHONY: help sync format lint test run docker-build up stop shell clean

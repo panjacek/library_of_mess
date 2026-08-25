@@ -1,2 +1,29 @@
+# env / secrets
 .env
-library.db
+
+# data (never commit user data)
+*.parquet
+*.db
+lib_bck/
+.cache/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+dist/
+
+# tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# local planning notes
+docs/plans/
+
+# streamlit
+.streamlit/secrets.toml
+
+# coverage artifacts
+coverage.xml
+.coverage*

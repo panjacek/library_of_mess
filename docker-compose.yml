@@ -2,9 +2,15 @@ services:
   library_of_mess:
     image: library_of_mess
     build: .
-    volumes:
-      - ${PWD}:/app
-      - ${LIBRARY_PATH}:/app/library:ro
     ports:
-      - ${PORT}:8501
-    command: "streamlit run app.py"
+      - "${PORT}:8501"
+    environment:
+      LIBRARY_DIR: /library
+      LIBRARY_DB: /data/library.parquet
+      THUMBNAILS_DIR: /data/thumbs
+    volumes:
+      - ${LIBRARY_PATH}:/library:ro
+      - mess-data:/data
+
+volumes:
+  mess-data:

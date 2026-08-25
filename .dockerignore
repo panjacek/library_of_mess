@@ -1,0 +1,39 @@
+# VCS / CI
+.git
+.gitignore
+.github/
+
+# python environments & caches
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# user data — never belongs in a build context
+.cache/
+lib_bck/
+*.parquet
+*.db
+.env
+.env.*
+.streamlit/secrets.toml
+
+# dev-only files
+tests/
+docs/
+Makefile
+docker-compose.yml
+Dockerfile
+.dockerignore
+AGENTS.md
+LICENSE
+
+# editors / OS junk
+.vscode/
+.idea/
+.DS_Store
