@@ -25,6 +25,10 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pa
     monkeypatch.setenv("LIBRARY_DB", str(tmp_path / "library.parquet"))
     monkeypatch.setenv("THUMBNAILS_DIR", str(tmp_path / "thumbs"))
     monkeypatch.setenv("EMBEDDINGS_PATH", str(tmp_path / "embeddings.npz"))
+    monkeypatch.setenv("MODEL_CACHE_DIR", str(tmp_path / "models"))
+    # UI smoke must never kick off model downloads or device autodetect
+    monkeypatch.setenv("EMBEDDINGS_WARMUP", "0")
+    monkeypatch.setenv("EMBEDDINGS_DEVICE", "cpu")
     yield tmp_path
 
 

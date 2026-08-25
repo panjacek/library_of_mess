@@ -57,6 +57,51 @@ make run
 | `THUMBNAILS_DIR` | `./.cache/thumbnails` | thumbnail cache                |
 | `THUMBNAIL_WORKERS` | `4`                   | parallel ffmpeg processes      |
 | `EMBEDDINGS_PATH` | `./.cache/embeddings.npz` | embedding store (semantic search groundwork) |
+| `MODEL_CACHE_DIR` | `~/.cache/library_of_mess/models` | downloaded model weights (optional extra) |
+| `EMBEDDINGS_DEVICE` | `cpu` | torch device for the encoder (`cuda` after installing CUDA wheels) |
+| `EMBEDDINGS_MODEL` | `google/siglip2-base-patch16-224` | any pinned `google/siglip2-*`; switching rebuilds the store automatically. `base-patch32-256` = ~3× faster indexing, lower recall |
+| `SEARCH_FRAMES_PER_VIDEO` | `12` | frames sampled per video, spaced evenly across its duration |
+| `SEARCH_FRAME_INTERVAL` | `10` | fallback spacing when a video's duration is unknown |
+| `SEARCH_INDEX_BUDGET` | `25` | max videos sampled per search-page visit (0 = search only what's indexed) |
+
+## Semantic search (optional extra)
+
+CLIP-style "find clips that look like X" runs **Google's SigLIP2-B/32 directly**
+(`google/siglip2-base-patch32-256`, Apache-2.0) via transformers + PyTorch
+(the `torch` package) on CPU — entirely local, no API, no converted artifacts.
+Not installed by default:
+
+```bash
+uv sync --extra embeddings
+```
+
+First use downloads the checkpoint once (~1.1GB fp32, revision-pinned) into
+`MODEL_CACHE_DIR`; thumbnails are embedded incrementally and cached in
+`EMBEDDINGS_PATH`, so re-scans only encode new videos (~6 img/s indexing,
+~0.2s per query on a modern laptop CPU). Video resolution is irrelevant to
+search cost — embedding operates on 400px thumbnails, so a 4K library costs
+the same as a 720p one.
+
+GPU later: install torch CUDA wheels instead of the pinned CPU ones and set
+`EMBEDDINGS_DEVICE=cuda`.
+
+### Where downloads live
+
+| content | location | lifetime |
+|---|---|---|
+| model weights (~1.1GB) | `MODEL_CACHE_DIR` → `~/.cache/library_of_mess/models` | permanent — never cleaned by the app; survives venv rebuilds, `make clean`, restarts; safe to back up |
+| embedding store | `EMBEDDINGS_PATH` | grows with your library (~3KB/frame); delete to force re-embed |
+| sampled frames | `.cache/thumbnails/_search/` | decode cache; delete to force re-sampling |
+
+`make clean` only wipes repo-relative caches — home-directory model weights
+are never touched. Contributors: the embedding stack is part of the default
+dev environment, so `make test` always exercises it. On app start the model
+loads in a background thread (`EMBEDDINGS_WARMUP=0` to disable), so the first
+search is ready without a cold wait.
+
+Without the extra, the app works as usual; the search page shows a hint
+instead. Research and measurements: [docs/research/embedding-models.md](docs/research/embedding-models.md),
+decision record: [docs/adr/0001-semantic-search-stack.md](docs/adr/0001-semantic-search-stack.md).
 
 ## Docker
 
@@ -119,11 +164,15 @@ sudo chown -R $USER:$USER .cache
 
 The original vision: tagging **by content**, not just by hand —
 
-- scene embeddings (CLIP-style) → "find clips that look like X".
-  Groundwork is merged (`embeddings.py`: incremental thumbnail-keyed cache,
-  cosine ranking, model-agnostic encoder interface). Model/runtime research is
-  ongoing — torch-based CLIP works today but drags ~2.5GB into a 464MB project,
-  so lighter backends (ONNX runtime, distilled models) are being evaluated first
+- scene embeddings (CLIP-style) → shipped as moment search: every video is
+  sampled into frames (one per `SEARCH_FRAME_INTERVAL` seconds, default 10) and
+  each frame is embedded, so a query like "rainy descent" returns the exact
+  moment — with playback seeking straight to it. Runs the official Google
+  SigLIP2-B/32 checkpoint via transformers/PyTorch CPU behind an optional
+  `embeddings` extra (`uv sync --extra embeddings`); weights download once to a
+  cache dir, base install stays light.
+  Research and measurements: [docs/research/embedding-models.md](docs/research/embedding-models.md),
+  decision record: [docs/adr/0001-semantic-search-stack.md](docs/adr/0001-semantic-search-stack.md)
 - audio transcription → searchable spoken-content tags
 - duplicate/near-duplicate detection across folders
 

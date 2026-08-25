@@ -12,6 +12,7 @@ PAGES = [
     "pages/002_by_date.py",
     "pages/003_tagging.py",
     "pages/004_gallery.py",
+    "pages/005_search.py",
     "pages/099_manage_db.py",
 ]
 

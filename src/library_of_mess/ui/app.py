@@ -1,10 +1,18 @@
 import streamlit as st
 
-from library_of_mess.ui.helpers import ensure_db_loaded, render_filters, show_video_file
+from library_of_mess.ui.helpers import (
+    ensure_db_loaded,
+    render_filters,
+    show_video_file,
+    warm_embedding_model,
+)
 
 st.set_page_config(page_title="Library of Mess", page_icon="📚", layout="wide")
 
 st.title("Library of Mess")
+
+# load the embedding model in the background so first search is fast
+warm_embedding_model()
 
 db = ensure_db_loaded()
 
@@ -22,5 +30,10 @@ if st.checkbox("Hide fullpath"):
 else:
     show_video = st.selectbox("Show Video", sorted(filtered_db["path"]), index=None)
 
-if show_video:
+# semantic-search results can request playback directly (seek to moment)
+play_now = st.session_state.pop("play_video", None)
+start_at = st.session_state.pop("play_video_start", None)
+if play_now:
+    show_video_file(play_now, start_time=int(start_at) if start_at is not None else None)
+elif show_video:
     show_video_file(show_video, partial_path=partial_path, filtered_db=filtered_db)

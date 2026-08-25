@@ -150,3 +150,54 @@ def test_search_empty_store_returns_empty() -> None:
 def test_search_dim_mismatch_raises() -> None:
     with pytest.raises(ValueError, match="dim"):
         search(np.ones(5), ["a"], np.ones((1, 3), dtype=np.float32))
+
+
+def test_update_embeddings_encodes_in_batches(tmp_path: Path) -> None:
+    """batch_size chunks encoder calls but yields the same store as one call."""
+
+    import numpy as np
+
+    calls: list[int] = []
+
+    def fake_encode(paths: list[Path]) -> np.ndarray:
+        calls.append(len(paths))
+        rng = np.random.default_rng(len(paths))
+        return rng.random((len(paths), 4)).astype(np.float32)
+
+    thumbs = []
+    for i in range(7):
+        p = tmp_path / f"v{i}.f0000.jpg"
+        p.write_bytes(b"x")
+        thumbs.append(p)
+
+    stems, matrix = update_embeddings(thumbs, fake_encode, tmp_path / "store.npz", batch_size=3)
+
+    assert stems == sorted(p.stem for p in thumbs)
+    assert matrix.shape == (7, 4)
+    assert calls == [3, 3, 1]
+
+
+def test_update_embeddings_rebuilds_on_model_change(tmp_path: Path) -> None:
+    """Same dims + different model_id must force a full re-embed, never mix spaces."""
+
+    import numpy as np
+
+    def encoder_a(paths: list[Path]) -> np.ndarray:
+        return np.tile(np.array([1.0, 0, 0, 0], dtype=np.float32), (len(paths), 1))
+
+    def encoder_b(paths: list[Path]) -> np.ndarray:
+        return np.tile(np.array([0, 1.0, 0, 0], dtype=np.float32), (len(paths), 1))
+
+    thumbs = []
+    for i in range(3):
+        p = tmp_path / f"v{i}.f0000.jpg"
+        p.write_bytes(b"x")
+        thumbs.append(p)
+    store = tmp_path / "store.npz"
+
+    _, matrix_a = update_embeddings(thumbs, encoder_a, store, model_id="model-a")
+    assert float(matrix_a[0][0]) == 1.0 and float(matrix_a[0][1]) == 0.0
+
+    _, matrix_b = update_embeddings(thumbs, encoder_b, store, model_id="model-b")
+
+    assert float(matrix_b[0][0]) == 0.0 and float(matrix_b[0][1]) == 1.0  # fully rebuilt, not mixed

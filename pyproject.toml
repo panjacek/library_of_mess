@@ -15,6 +15,13 @@ dependencies = [
     "numpy>=2.5.2",
 ]
 
+[project.optional-dependencies]
+embeddings = [
+    "torch>=2.9",
+    "transformers>=4.49,<5",
+    "pillow>=11",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8",
@@ -23,6 +30,11 @@ dev = [
     "bandit>=1.7",
     "pandas-stubs>=2.2",
     "pytest-cov>=7.1.0",
+    # embedding stack lives here so `make test` always exercises it;
+    # end users opt in via the `embeddings` extra instead
+    "torch>=2.9",
+    "transformers>=4.49,<5",
+    "pillow>=11",
 ]
 
 [build-system]
@@ -66,5 +78,13 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["streamlit.*", "mutagen.*", "ffmpeg.*"]
+module = ["streamlit.*", "mutagen.*", "ffmpeg.*", "torch.*", "transformers.*", "PIL.*"]
 ignore_missing_imports = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]

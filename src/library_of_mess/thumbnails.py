@@ -42,6 +42,63 @@ def thumbnail_path_for(video_path: Path, output_dir: Path) -> Path:
     return output_dir / (video_path.stem + ".jpg")
 
 
+def search_frames_dir(output_dir: Path | None = None) -> Path:
+    """Subdirectory holding sampled frames used by semantic search."""
+    return (output_dir if output_dir is not None else thumbnails_dir()) / "_search"
+
+
+def search_frame_pattern(video_stem: str) -> str:
+    """Glob pattern matching all sampled search frames of one video."""
+    return f"{video_stem}.f*.jpg"
+
+
+def generate_search_frames(
+    video_path: str | Path,
+    frames_dir: Path,
+    timestamps: list[float],
+) -> list[Path]:
+    """Extract one 512px frame per timestamp as {stem}.f{index:04d}.jpg.
+
+    Seek-based extraction: one short ffmpeg run per timestamp — slow-ish per
+    spawn but identical behavior on every ffmpeg build ever shipped, and the
+    filename index maps exactly to the requested timestamp position.
+    Existing files are kept (resume); consecutive byte-identical frames are
+    skipped so static stretches do not bloat the store.
+
+    Individual timestamps that fail (seek past end-of-stream, decode hiccups)
+    are logged and skipped — they must never abort the batch or touch already
+    extracted frames. Raises ffmpeg.Error only when NOTHING could be
+    extracted at all.
+    """
+
+    video = Path(video_path)
+    frames_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx, seconds in enumerate(timestamps):
+        target = frames_dir / f"{video.stem}.f{idx:04d}.jpg"
+        if target.exists():
+            continue
+        try:
+            (
+                ffmpeg.input(str(video), ss=max(seconds, 0.0))
+                .filter("scale", 512, -2)
+                .output(str(target), vframes=1, **{"q:v": 3})
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+        except ffmpeg.Error as err:
+            tail = err.stderr.decode(errors="replace").strip().splitlines()[-1:] or ["?"]
+            logger.warning("frame %d (@%ss) failed on %s: %s — skipping", idx, seconds, video.name, tail[0])
+
+    written = sorted(frames_dir.glob(f"{video.stem}.f*.jpg"))
+    if not written:
+        raise ffmpeg.Error(
+            f"no frames could be extracted from {video.name} (all {len(timestamps)} timestamp(s) failed)",
+            b"",
+            b"",
+        )
+    return written
+
+
 def failure_marker_for(video_path: Path, output_dir: Path) -> Path:
     """Marker file written when ffmpeg cannot decode a video (negative cache)."""
     return output_dir / (video_path.stem + ".jpg.fail")

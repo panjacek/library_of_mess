@@ -6,11 +6,13 @@
 *.db
 lib_bck/
 .cache/
+eval_labels.json
 
 # python
 __pycache__/
 *.pyc
 .venv/
+.venv-*/
 dist/
 
 # tooling caches

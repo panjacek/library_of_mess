@@ -16,7 +16,9 @@ flowchart LR
     pages --> render["st.video / st.image"]
     pages -- "gallery" --> thumbs["thumbnails.py<br/>(ffmpeg frames, codec probe)"]
     thumbs --> cache[("thumbnail cache<br/>.jpg + .fail markers")]
-    cache -. "semantic search (planned,<br/>pluggable encoder)" .-> embeddings["embeddings.py<br/>(incremental npz store,<br/>cosine top-k)"]
+    pages -- "text query<br/>(optional extra)" --> encoders["encoders/torch_clip.py<br/>(google/siglip2-base-patch32-256,<br/>revision-pinned)"]
+    encoders --> embeddings["embeddings.py<br/>(incremental npz store,<br/>cosine top-k)"]
+    embeddings --> hits["ranked thumbnails → play"]
 ```
 
 Multipage discovery works because `pages/` sits next to `app.py` (numbering
