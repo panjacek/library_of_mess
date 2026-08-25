@@ -453,6 +453,7 @@ source = { editable = "." }
 dependencies = [
     { name = "ffmpeg-python" },
     { name = "mutagen" },
+    { name = "numpy" },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "streamlit" },
@@ -472,6 +473,7 @@ dev = [
 requires-dist = [
     { name = "ffmpeg-python", specifier = ">=0.2" },
     { name = "mutagen", specifier = ">=1.47" },
+    { name = "numpy", specifier = ">=2.5.2" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "streamlit", specifier = ">=1.38,<2" },

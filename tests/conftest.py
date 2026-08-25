@@ -24,6 +24,7 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pa
     monkeypatch.setenv("LIBRARY_DIR", str(tmp_path / "library"))
     monkeypatch.setenv("LIBRARY_DB", str(tmp_path / "library.parquet"))
     monkeypatch.setenv("THUMBNAILS_DIR", str(tmp_path / "thumbs"))
+    monkeypatch.setenv("EMBEDDINGS_PATH", str(tmp_path / "embeddings.npz"))
     yield tmp_path
 
 

@@ -23,6 +23,11 @@ def thumbnails_dir() -> Path:
     return Path(os.environ.get("THUMBNAILS_DIR", "./.cache/thumbnails"))
 
 
+def embeddings_path() -> Path:
+    """Location of the CLIP embedding store (npz)."""
+    return Path(os.environ.get("EMBEDDINGS_PATH", "./.cache/embeddings.npz"))
+
+
 def thumbnail_workers() -> int:
     """Parallel ffmpeg processes used for thumbnail batches."""
     return int(os.environ.get("THUMBNAIL_WORKERS", "4"))

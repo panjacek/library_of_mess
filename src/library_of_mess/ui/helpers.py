@@ -1,6 +1,5 @@
 """Streamlit glue: session-state DB loading and widgets shared across pages."""
 
-import logging
 from pathlib import Path
 
 import pandas as pd
@@ -8,9 +7,12 @@ import streamlit as st
 from streamlit.logger import get_logger
 
 from library_of_mess import config, database
+from library_of_mess import thumbnails as thumbs
 
 logger = get_logger(__name__)
-logger.setLevel(logging.DEBUG)
+
+# st.video crashes on HEVC/H265 in most browsers/codecs; show thumbnail instead
+UNSUPPORTED_CODECS = {"hevc", "h265"}
 
 
 def ensure_db_loaded(force_reload: bool = False) -> pd.DataFrame:
@@ -73,12 +75,24 @@ def render_filters(db_df: pd.DataFrame) -> pd.DataFrame:
     return filtered_db
 
 
-# FIXME: HEVC H265 is not supported :/
-# TODO: check if video is HEVC to avoid crashes
+def _cached_codec(resolved: Path) -> str | None:
+    """video_codec with a session cache — streamlit reruns pages on every
+    widget interaction, so probing would otherwise spawn ffprobe per render."""
+    cache: dict[str, str | None] = st.session_state.setdefault("codec_cache", {})
+    key = str(resolved)
+    if key not in cache:
+        cache[key] = thumbs.video_codec(resolved)
+    return cache[key]
+
+
 def show_video_file(
     video_path: str | Path, partial_path: bool = False, filtered_db: pd.DataFrame | None = None
 ) -> None:
-    """Show video file using streamlit.video."""
+    """Show video file using streamlit.video.
+
+    Falls back to the cached thumbnail with a warning for codecs st.video
+    cannot render (HEVC/H265).
+    """
     if partial_path:
         # find this name in filtered_db, potential issue if 2 same names
         if filtered_db is None:
@@ -87,4 +101,14 @@ def show_video_file(
         stored = match.values[0]
     else:
         stored = video_path
-    st.video(database.resolve_media_path(stored).read_bytes())
+
+    resolved = database.resolve_media_path(stored)
+    codec = _cached_codec(resolved)
+    if codec in UNSUPPORTED_CODECS:
+        st.warning(f"Browser cannot play {codec.upper()} video — showing thumbnail instead")
+        thumb = thumbs.thumbnail_path_for(resolved, config.thumbnails_dir())
+        if thumb.exists():
+            st.image(str(thumb))
+        return
+
+    st.video(resolved.read_bytes())

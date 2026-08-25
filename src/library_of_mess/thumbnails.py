@@ -34,7 +34,7 @@ def generate_thumbnail(in_filename: str | Path, out_filename: str | Path, time: 
         )
     except ffmpeg.Error as ffmpeg_err:
         stderr_tail = ffmpeg_err.stderr.decode(errors="replace").strip().splitlines()[-1:] or ["?"]
-        logger.warning(f"ffmpeg failed on {in_filename}: {stderr_tail[0]}")
+        logger.warning("ffmpeg failed on %s: %s", in_filename, stderr_tail[0])
         raise ffmpeg_err
 
 
@@ -56,8 +56,21 @@ def clear_failure_markers(output_dir: Path | None = None) -> int:
     for marker in output_dir.glob("*.jpg.fail"):
         marker.unlink(missing_ok=True)
         removed += 1
-    logger.info(f"Cleared {removed} thumbnail failure markers")
+    logger.info("Cleared %s thumbnail failure markers", removed)
     return removed
+
+
+def video_codec(video_path: str | Path) -> str | None:
+    """Return the video codec name (e.g. "h264", "hevc") or None when it cannot be probed."""
+    try:
+        probe = ffmpeg.probe(str(video_path))
+    except ffmpeg.Error:
+        logger.debug("ffprobe failed on %s", video_path)
+        return None
+    for stream in probe.get("streams", []):
+        if stream.get("codec_type") == "video":
+            return stream.get("codec_name")
+    return None
 
 
 def generate_thumbnail_from_video(video_path: Path, output_dir: Path) -> dict:
@@ -73,9 +86,9 @@ def generate_thumbnail_from_video(video_path: Path, output_dir: Path) -> dict:
 
     thumb = thumbnail_path_for(video_path, output_dir)
     if thumb.exists():
-        logger.debug(f"Thumbnail {thumb} already exists")
+        logger.debug("Thumbnail %s already exists", thumb)
     else:
-        logger.debug(f"Extracting first frame of {video_path}")
+        logger.debug("Extracting first frame of %s", video_path)
         generate_thumbnail(str(video_path), str(thumb), 0, THUMBNAIL_WIDTH)
 
     return {"path": video_path, "thumbnail": thumb}

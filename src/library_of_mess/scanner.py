@@ -53,9 +53,9 @@ def create_entry_from_path(entry_path: Path) -> Entry | None:
     """Build a database entry; None when the file is not recognizable media."""
     media_info = mutagen.File(entry_path)
     if media_info is None:
-        logger.warning(f"Skipping unrecognized file {entry_path}")
+        logger.warning("Skipping unrecognized file %s", entry_path)
         return None
-    logger.debug(f"Len={media_info.info.length}s, {entry_path}")
+    logger.debug("Len=%ss, %s", media_info.info.length, entry_path)
 
     return Entry(
         path=to_relative(entry_path),
@@ -79,7 +79,7 @@ def parse_video_paths(list_of_videos: list[Path]) -> pd.DataFrame:
     """Convert list of video paths to dataframe, skipping unparseable files."""
     entries = [create_entry_from_path(video) for video in list_of_videos]
     data = [entry for entry in entries if entry is not None]
-    logger.info(f"Found {len(data)} videos")
+    logger.info("Found %s videos", len(data))
     return pd.DataFrame(data, columns=list(DB_COLUMNS.keys()))
 
 
