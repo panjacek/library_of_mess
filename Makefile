@@ -1,47 +1,38 @@
-INCLUDE_FFMPEG ?= 0
-FORCE_REBUILD ?= 0
-SHOW_LOGS ?= 0
+help:  ## show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}'
 
-DOCKER_BUILD_CMD=docker compose build
-DOCKER_BUILD_EXTRAS:=
-ifeq ("$(FORCE_REBUILD)", "1")
-	DOCKER_BUILD_EXTRAS+= --no-cache
-endif
-ifeq ("$(INCLUDE_FFMPEG)", "1")
-	DOCKER_BUILD_EXTRAS+= --build-arg INCLUDE_FFMPEG=1 --build-arg BASE_IMAGE=python:3.12-slim-ffmpeg
-endif
+sync:  ## install/sync all deps (incl. dev group) into .venv
+	uv sync --group dev
 
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+format:  ## auto-format code
+	uv run ruff format .
+	uv run ruff check --fix .
 
-build:  ## build image
-ifeq ("$(INCLUDE_FFMPEG)", "1")
-	$(MAKE) build_ffmpeg
-endif
-	$(DOCKER_BUILD_CMD) $(DOCKER_BUILD_EXTRAS) library_of_mess
+lint:  ## linters: ruff + mypy + bandit
+	uv run ruff check .
+	uv run ruff format --check .
+	uv run mypy src tests
+	uv run bandit -c pyproject.toml -r src -q
 
-build_ffmpeg:  ## build ffmpeg image
-	docker build -t python:3.12-slim-ffmpeg -f Dockerfile.ffmpeg .
+test:  ## unit + UI smoke tests
+	uv run pytest
 
-shell:  ## open shell
-	docker compose run --rm -it library_of_mess /bin/bash
+run:  ## launch streamlit UI (http://localhost:8501)
+	uv run streamlit run src/library_of_mess/ui/app.py
 
-up:  ## start containers
+docker-build:  ## build the container image
+	docker compose build
+
+up:  ## start container in background
 	docker compose up -d
-ifeq ("$(SHOW_LOGS)", "1")
-	docker compose logs -f
-endif
 
 stop:  ## stop containers
 	docker compose down -t2
 
-format:  ## format code
-	isort .
-	black .
+shell:  ## shell inside container
+	docker compose run --rm -it library_of_mess /bin/bash
 
-check_pip:
-	docker compose run --rm -it library_of_mess /bin/bash -c "pip list -u && pip list --outdated"
+clean:  ## clean caches
+	rm -rf ./.cache .pytest_cache .mypy_cache .ruff_cache
 
-clean:  ## clean .cache
-	rm -rf ./.cache/*
-
+.PHONY: help sync format lint test run docker-build up stop shell clean

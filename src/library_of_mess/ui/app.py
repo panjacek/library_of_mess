@@ -1,25 +1,14 @@
-import logging
-
 import streamlit as st
-from streamlit.logger import get_logger
 
-from helpers.common import filter_db, load_db, show_video_file
+from library_of_mess.ui.helpers import ensure_db_loaded, render_filters, show_video_file
 
 st.set_page_config(page_title="Library of Mess", page_icon="📚", layout="wide")
 
-# add sublogger for page info
-logger = get_logger(__name__)
-logger.setLevel(logging.DEBUG)
-
 st.title("Library of Mess")
 
-load_db()
-db = st.session_state.db
-if db is None:
-    st.warning("No videos found, check your database")
-    st.stop()
+db = ensure_db_loaded()
 
-filtered_db = filter_db()
+filtered_db = render_filters(db)
 
 # show/hide db
 if st.checkbox("Show raw DB"):
