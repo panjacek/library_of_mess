@@ -3,7 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from library_of_mess.thumbnails import generate_thumbnail_from_video, generate_thumbnails
+from library_of_mess.thumbnails import (
+    generate_search_frames,
+    generate_thumbnail_from_video,
+    generate_thumbnails,
+)
 
 NO_FFMPEG = pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg not available")
 
@@ -88,3 +92,52 @@ def test_clear_failure_markers(tmp_path: Path) -> None:
 
     assert removed == 2
     assert list(out_dir.iterdir())[0].name == "keep.jpg"
+
+
+def test_generate_search_frames_samples_at_interval(tmp_path: Path, tiny_video: Path) -> None:
+    frames_dir = tmp_path / "_search"
+    frames = generate_search_frames(tiny_video, frames_dir=frames_dir, timestamps=[0.0, 0.4, 0.8])
+
+    assert len(frames) >= 2
+    assert all(p.parent == frames_dir for p in frames)
+    names = [f.name for f in frames]
+    stem = tiny_video.stem
+    assert all(n.startswith(f"{stem}.f") and n.endswith(".jpg") for n in names)
+    # resume-safe: rerun into the same frames_dir keeps existing files
+    again = generate_search_frames(tiny_video, frames_dir=frames_dir, timestamps=[0.0, 0.4, 0.8])
+    assert {f.name for f in again} == set(names)
+
+
+def test_generate_search_frames_reports_ffmpeg_stderr(
+    tmp_path: Path, tiny_video: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Regression: failures must surface the real ffmpeg stderr, not a generic message."""
+    import ffmpeg as ffmpeg_lib
+
+    from library_of_mess import thumbnails
+
+    class FakeChain:
+        def filter(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            return self
+
+        def output(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            return self
+
+        def run(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            raise ffmpeg_lib.Error("ffmpeg", b"", b"decode\ncorrupt data at frame 12\n")
+
+    monkeypatch.setattr(thumbnails.ffmpeg, "input", lambda *args, **kwargs: FakeChain())
+    with pytest.raises(ffmpeg_lib.Error), caplog.at_level("WARNING"):
+        generate_search_frames(tiny_video, frames_dir=tmp_path, timestamps=[0.0, 0.2])
+
+    assert "corrupt data at frame 12" in caplog.text
+
+
+def test_generate_search_frames_skips_unseekable_timestamps(tmp_path: Path, tiny_video: Path) -> None:
+    """Regression: a seek past the last frame (1s clip, t=0.8 requested) must
+    skip that timestamp — not abort the batch or wipe extracted siblings."""
+    frames = generate_search_frames(tiny_video, frames_dir=tmp_path / "_search", timestamps=[0.0, 0.4, 0.8])
+
+    names = [f.name for f in frames]
+    assert "tiny.f0000.jpg" in names and "tiny.f0001.jpg" in names
+    assert all(p.exists() for p in frames)

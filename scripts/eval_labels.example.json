@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy to eval_labels.json (gitignored) and fill 'relevant' per query with the exact video stems that should surface. Leave relevant empty to skip scoring for that query (it still appears in results). Run: uv run python scripts/eval_search.py --from-thumbs (fast, uses existing thumbnail cache) or without the flag for whole-video moment sampling.",
+  "queries": [
+    { "text": "cycling path", "relevant": [] },
+    { "text": "red gloves", "relevant": [] },
+    { "text": "singletrack", "relevant": [] },
+    { "text": "mountains", "relevant": [] }
+  ]
+}

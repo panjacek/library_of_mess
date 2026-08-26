@@ -1,6 +1,7 @@
 """Streamlit glue: session-state DB loading and widgets shared across pages."""
 
 from pathlib import Path
+import os
 
 import pandas as pd
 import streamlit as st
@@ -13,6 +14,43 @@ logger = get_logger(__name__)
 
 # st.video crashes on HEVC/H265 in most browsers/codecs; show thumbnail instead
 UNSUPPORTED_CODECS = {"hevc", "h265"}
+
+
+@st.cache_resource
+def load_encoders() -> tuple:
+    """Build (image, text) encoders once per server process.
+
+    Shared by the warmup hook in app.py and the search page so the model
+    loads exactly once. Requires the `embeddings` extra.
+    """
+    from library_of_mess.encoders import build_encoders
+
+    return build_encoders()
+
+
+def warm_embedding_model() -> None:
+    """Load the embedding model in a background thread at app start.
+
+    No-op when the optional extra is absent or EMBEDDINGS_WARMUP=0. Errors
+    are logged, never raised — startup must not depend on ML availability.
+    """
+    import importlib.util
+    import threading
+
+    if os.environ.get("EMBEDDINGS_WARMUP", "1") == "0":
+        return
+    if any(importlib.util.find_spec(m) is None for m in ("torch", "transformers")):
+        logger.info("embedding extra not installed — skipping model warmup")
+        return
+
+    def _load() -> None:
+        try:
+            load_encoders()
+            logger.info("embedding model warmed up")
+        except Exception as exc:  # download failures etc. must not kill startup
+            logger.warning("embedding warmup failed: %s", exc)
+
+    threading.Thread(target=_load, daemon=True, name="embeddings-warmup").start()
 
 
 def ensure_db_loaded(force_reload: bool = False) -> pd.DataFrame:
@@ -86,12 +124,15 @@ def _cached_codec(resolved: Path) -> str | None:
 
 
 def show_video_file(
-    video_path: str | Path, partial_path: bool = False, filtered_db: pd.DataFrame | None = None
+    video_path: str | Path,
+    partial_path: bool = False,
+    filtered_db: pd.DataFrame | None = None,
+    start_time: int | None = None,
 ) -> None:
     """Show video file using streamlit.video.
 
     Falls back to the cached thumbnail with a warning for codecs st.video
-    cannot render (HEVC/H265).
+    cannot render (HEVC/H265). `start_time` seeks playback (search results).
     """
     if partial_path:
         # find this name in filtered_db, potential issue if 2 same names
@@ -111,4 +152,7 @@ def show_video_file(
             st.image(str(thumb))
         return
 
-    st.video(resolved.read_bytes())
+    if start_time is None:
+        st.video(resolved.read_bytes())
+    else:
+        st.video(resolved.read_bytes(), start_time=start_time)
